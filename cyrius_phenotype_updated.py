@@ -1,117 +1,102 @@
 ##BEFORE RUNNING:
-## change the data file to use OR comment in/out the files as needed
-## change the output file to match the necessary file
 
-#loading dependencies
+#dependencies
 import pandas as pd
 import re
 import math
-import sys
 import numpy as np
+import argparse
 
-print(f"List of arguments: {sys.argv}")
+parser=argparse.ArgumentParser(description="Process genotypes to determine CYP2D6 activity score and genotype inferred phenotype")
+parser.add_argument("input_file",type=str,help="Path to the input TSV file grenerated by Cyrius tool by Illumina")
+parser.add_argument('separator',type=str,default='\t',help="the separator in your input file if using other type of input file")
+parser.add_argument("output_file",type=str,help="Path to the putput CSV file")
+parser.add_argument("star_allele_dict",type=str,help="path to the CSV file that contains the star allele to AS conversions")
+args=parser.parse_args()
 
 #loading and reading the table file
-df=pd.read_csv(sys.argv[1],sep='\t')  # for bb data
-# print(df,df.columns)
-# df = pd.read_table('cyrius genotyping out/cyrius_output.tsv',sep='\t') # for 50genomes data
+df=pd.read_csv(args.input_file,sep=args.separator) 
 
-# def remove_(column):
-#     mod_list=[]
-#     for value in column:
-#         parts=value.split('_')
-#         if len(parts)>2:
-#             first='+'.join(parts[:2])
-#             second='+'.join(parts[2:])
-#             result='/'.join([first,second])
-#             mod_list.append(result)
-#         else:
-#             mod_list.append(value)
-
-# mod_genotype=remove_(df['Genotype'].tolist())
-# df['mod_genotype']=mod_genotype
-
+def mod_genotype(column):
+    mod_list=[]
+    for value in column:
+        first_combination = value.split(';')[0]
+        parts=first_combination.split('_')
+        if len(parts)>2:
+            first='+'.join(parts[:2])
+            second='+'.join(parts[2:])
+            result='/'.join([first,second])
+            mod_list.append(result)
+        else if len(parts)==2:
+            result2='/'.join([parts[0],parts[1]])
+            mod_list.append(result2)
+        else:
+            mod_list.append(value)
 
 def split_values_into_columns(column):
     Allele1=[]
     Allele2=[]
     for value in column:
-        first_combination = value.split(';')[0]
-        parts=first_combination.split('/')
+        parts=value.split('/')
         if len(parts)<2:
             parts.append(None)
         Allele1.append(parts[0])
         Allele2.append(parts[1])
     return Allele1,Allele2
 
+def get_activity_scores(star_allele,star_allele_dict):
+    return star_allele_dict.get(star_allele,'unknown')
 
-#split alleles if not already split
-if 'Allele1' not in df.columns:
-    Allele1,Allele2=split_values_into_columns(df['Genotype'])
-    temp_df=pd.DataFrame({
-        'Allele1':Allele1,
-        'Allele2':Allele2
-    })
-    df[['Allele1','Allele2']]=temp_df
-
-#defining the functions
-#TODO  add more star alleles and their values
-functional_genotypes = ['*1','*2','*2+*4','*13+*2','*27','*35','*34','*33','*39','*45'] #1.0
-reduced_functionality_alleles = ['*17','*29','*41x2','*59','*10+*9','*10x2'] #0.5
-severely_reduced_alleles=['*36+*10','*10','*32','*41','*9','*10+*4','*119'] #0.25                              
-non_functional_alleles = ['*3','*4','*5','*6','*6x2','*7','*11','*13','*15','*40','*68','*68+*4','*68+*68','*68+*68+*4',
-                            '*4.013+*4','*4.013+*4.013','*4.013','*4x2','*68+*68+*68+*68+*4'] #0
-unknown_undetermined_alleles=['*22','*24','*28','*43','*43x2','*83','*106','*108','*116','*117','*122','*127','*131']   #need to add a calculation
-increased_function_alleles= ['*1x2','*2x2','*1+*1','*35x2','*33x2'] #2.0
-x3_increase=['*2x3']#3.0
-x4_increase=['*2x4']#4.0
-def mapping_activity(allele1,allele2):
+def mapping_activity(allele1,allele2,star_allele_dict):
     #calculating the activity
     activity_list=[]
     for i in range(len(allele1)):
         activity_al1=0
         activity_al2=0
-        if str(allele1[i]) in functional_genotypes:
-            activity_al1='1.00'
-        elif str(allele1[i]) in reduced_functionality_alleles:
-            activity_al1='0.50'
-        elif str(allele1[i]) in severely_reduced_alleles:
-            activity_al1='0.25'
-        elif str(allele1[i]) in non_functional_alleles:
-            activity_al1='0.00'
-        elif str(allele1[i]) in unknown_undetermined_alleles:
-            activity_al1='*'
-        elif str(allele1[i]) in increased_function_alleles:
-            activity_al1='2.00'
-        elif str(allele1[i]) in x3_increase:
-            activity_al1='3.00'
-        elif str(allele1[i]) in x4_increase:
-            activity_al1='4.00'
+        #for allele1
+        if 'x' in str[allele1[i]]:
+            a_value=str[allele1[i]].split("x")[0]
+            times=str[allele1[i]].split("x")[1]
+            a_parts=[]
+            for n in range(times):
+                a_parts.append(a_value)
+                print('multiplying n')
+            a1='+'.join(a_parts)
         else:
-            activity_al1='-1'
-        if str(allele2[i]) in functional_genotypes:
-            activity_al2='1.00'
-        elif str(allele2[i]) in reduced_functionality_alleles:
-            activity_al2='0.50'
-        elif str(allele2[i]) in severely_reduced_alleles:
-            activity_al2='0.25'
-        elif str(allele2[i]) in non_functional_alleles:
-            activity_al2='0.00'
-        elif str(allele2[i]) in unknown_undetermined_alleles:
-            activity_al2='*'
-        elif str(allele2[i]) in increased_function_alleles:
-            activity_al2='2.00'
-        elif str(allele2[i]) in x3_increase:
-            activity_al2='3.00'
-        elif str(allele2[i]) in x4_increase:
-            activity_al2='4.00'
+            a1=allele1[i]
+        
+        if '+' in str[a1]:
+            b_value=str[a1].split("+")
+            for val in b_value:
+                acscore=get_activity_scores(val,star_allele_dict)
+                activity_al1=activity_al1+acscore
         else:
-            activity_al2='-1'
+            activity_al1=get_activity_scores(str[a1],star_allele_dict)
+        #for allele2
+        if 'x' in str[allele2[i]]:
+            a_value=str[allele2[i]].split("x")[0]
+            times=str[allele2[i]].split("x")[1]
+            a_parts=[]
+            for n in range(times):
+                a_parts.append(a_value)
+                print('multiplying n')
+            a2='+'.join(a_parts)
+        else:
+            a2=allele2[i]
+        
+        if '+' in str[a2]:
+            b_value=str[a2].split("+")
+            for val in b_value:
+                acscore=get_activity_scores(val,star_allele_dict)
+                activity_al2=activity_al2+acscore
+        else:
+            activity_al2=get_activity_scores(str[a2],star_allele_dict)
+    
         activity_list.append([activity_al1,activity_al2])
     return pd.Series(activity_list)
 
-def combining_alleles(allele1,allele2):
-    activity_list=mapping_activity(allele1,allele2)
+def combining_alleles(allele1,allele2,star_allele_dict):
+    activity_list=mapping_activity(allele1,allele2,star_allele_dict)
     activity=[]
     for item in activity_list:
         a,b=item
@@ -149,8 +134,25 @@ def mapping_genotype_to_phenotype(activity_list):
     
     return pd.Series(phenotype_list)
 
+#modify genotype to include genotypes where no haplotypes has been asigned or which has more than one possible genotype
+mod_genotypes=mod_genotype(df['Genotype'].tolist())
+df['mod_genotype']=mod_genotypes
+
+#split alleles if not already split
+if 'Allele1' not in df.columns:
+    Allele1,Allele2=split_values_into_columns(df['mod_genotype'])
+    temp_df=pd.DataFrame({
+        'Allele1':Allele1,
+        'Allele2':Allele2
+    })
+    df[['Allele1','Allele2']]=temp_df
+
+# Star_allele dictionary
+dict_df=pd.read_csv(args.star_allele_dict)
+star_allele_dict=dict_df.set_index('allele')['Activity_score'].to_dict() 
+
 #determining and writing the phenotype
-df['Activity']=combining_alleles(df['Allele1'],df['Allele2'])
+df['Activity']=combining_alleles(df['Allele1'],df['Allele2'],star_allele_dict)
 df['Cyrius_phenotype']=mapping_genotype_to_phenotype(df['Activity'])
-df.to_csv(sys.argv[2],index=False)
+df.to_csv(args.output_file,index=False)
 print('Matching complete')
