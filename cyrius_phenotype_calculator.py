@@ -52,40 +52,46 @@ def mapping_activity(allele1,allele2,star_allele_dict):
         activity_al1=0
         activity_al2=0
         #for allele1
-        if 'x' in str(allele1[i]):
-            a_value=str(allele1[i]).split("x")[0]
-            times=str(allele1[i]).split("x")[1]
-            times=int(times)
-            a_parts=[a_value] * times
-            a1='+'.join(a_parts)
+        if allele1[i] is None:
+            activity_al1 = None
         else:
-            a1=allele1[i]
-        
-        if '+' in str(a1):
-            b_value=str(a1).split("+")
-            for val in b_value:
-                acscore=get_activity_scores(val,star_allele_dict)
-                activity_al1+=acscore
-        else:
-            activity_al1=get_activity_scores(str(a1),star_allele_dict)
+            if 'x' in str(allele1[i]):
+                a_value=str(allele1[i]).split("x")[0]
+                times=str(allele1[i]).split("x")[1]
+                times=int(times)
+                a_parts=[a_value] * times
+                a1='+'.join(a_parts)
+            else:
+                a1=allele1[i]
+            
+            if '+' in str(a1):
+                b_value=str(a1).split("+")
+                for val in b_value:
+                    acscore=get_activity_scores(val,star_allele_dict)
+                    activity_al1+=acscore
+            else:
+                activity_al1=get_activity_scores(str(a1),star_allele_dict)
         
         #for allele2
-        if 'x' in str(allele2[i]):
-            a_value=str(allele2[i]).split("x")[0]
-            times=str(allele2[i]).split("x")[1]
-            times=int(times)
-            a_parts=[a_value] * times
-            a2='+'.join(a_parts)
+        if allele2[i] is None:
+            activity_al2 = None
         else:
-            a2=allele2[i]
-        
-        if '+' in str(a2):
-            b_value=str(a2).split("+")
-            for val in b_value:
-                acscore=get_activity_scores(val,star_allele_dict)
-                activity_al2+=acscore
-        else:
-            activity_al2=get_activity_scores(str(a2),star_allele_dict)
+            if 'x' in str(allele2[i]):
+                a_value=str(allele2[i]).split("x")[0]
+                times=str(allele2[i]).split("x")[1]
+                times=int(times)
+                a_parts=[a_value] * times
+                a2='+'.join(a_parts)
+            else:
+                a2=allele2[i]
+            
+            if '+' in str(a2):
+                b_value=str(a2).split("+")
+                for val in b_value:
+                    acscore=get_activity_scores(val,star_allele_dict)
+                    activity_al2+=acscore
+            else:
+                activity_al2=get_activity_scores(str(a2),star_allele_dict)
     
         activity_list.append([activity_al1,activity_al2])
     return pd.Series(activity_list)
