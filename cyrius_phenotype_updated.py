@@ -72,6 +72,7 @@ def mapping_activity(allele1,allele2,star_allele_dict):
                 activity_al1=activity_al1+acscore
         else:
             activity_al1=get_activity_scores(str[a1],star_allele_dict)
+        
         #for allele2
         if 'x' in str[allele2[i]]:
             a_value=str[allele2[i]].split("x")[0]
@@ -100,10 +101,13 @@ def combining_alleles(allele1,allele2,star_allele_dict):
     activity=[]
     for item in activity_list:
         a,b=item
-        try:
-            activity.append(str(float(a) +float(b)))
-        except ValueError:
-            activity.append(str(a+b))
+        if a is None or b is None or pd.isna(a) or pd.isna(b):
+            activity.append('unknown')
+        else:
+            try:
+                activity.append(str(float(a) +float(b)))
+            except ValueError:
+                activity.append(str(a+b))
     return activity
 
 
@@ -112,25 +116,26 @@ def mapping_genotype_to_phenotype(activity_list):
     phenotype_list=[]
     values=[]
     for item in activity_list:
-        matches = re.findall(r'(-?\d+\.?\d*)\*?', item)
-        if matches:
-            values.append(float(matches[0]))
+        if item=='unknown':
+            values.append('unknown')
         else:
-            values.append(np.nan)
+            try:
+                values.append(float(item))
+            except ValueError:
+                values.append('unknown')
     for value in values:
-        if value >=2.25:
-            phenotype_list.append('UM') #ultrafast metabolisers
-        elif 1 <= value  < 2.25:
-            print('adding normal value')
-            phenotype_list.append('NM') #normal metabolisers
-        elif 0 < value <1:
-            phenotype_list.append('IM') # intermediate metabolisers
+        if value == 'unknown':
+            phenotype_list.append('unknown') #unknown type
         elif math.isclose(value,0.0,abs_tol=1e-9):
             phenotype_list.append('PM')# poor metabolisers
-        elif value =='aa':
-            phenotype_list.append('missing') 
+        elif 0 < value <1.25:
+            phenotype_list.append('IM') # intermediate metabolisers
+        elif 1.25 <= value <=2.25:
+            phenotype_list.append('NM') #normal metabolisers
+        elif value > 2.25:
+            phenotype_list.append('UM') #ultrarapid metabolisers
         else:
-            phenotype_list.append('missing') 
+            phenotype_list.append('unknown') 
     
     return pd.Series(phenotype_list)
 
