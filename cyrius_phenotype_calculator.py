@@ -1,3 +1,4 @@
+
 ##BEFORE RUNNING:
 
 #dependencies
@@ -17,6 +18,7 @@ args=parser.parse_args()
 def mod_genotype(column):
     mod_list=[]
     for value in column:
+        value=str(value)
         first_combination = value.split(';')[0]
         parts=first_combination.split('_')
         if len(parts)>2:
